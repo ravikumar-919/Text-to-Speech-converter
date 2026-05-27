@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Text to Speech Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .app-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .glass-panel {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(16px);
+    border-radius: 32px;
+    border: 1px solid rgba(71, 85, 105, 0.6);
+    padding: 2rem;
+    box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.3);
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 1.8rem;
+  }
+  .header h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.3px;
+    margin-bottom: 0.3rem;
+  }
+  .header p {
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
+  textarea {
+    width: 100%;
+    height: 240px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 24px;
+    padding: 1rem;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    font-family: 'Inter', monospace;
+    resize: vertical;
+    outline: none;
+    transition: 0.2s;
+    margin-bottom: 1.5rem;
+  }
+  textarea:focus {
+    border-color: #818cf8;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .voice-selector {
+    flex: 2;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 40px;
+    padding: 0.6rem 1rem;
+    color: white;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .speak-btn {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: white;
+    border: none;
+    border-radius: 40px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: 0.2s;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  .speak-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+  }
+  .clear-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    border-radius: 40px;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .clear-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+  }
+
+  .info-note {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  @media (max-width: 600px) {
+    .glass-panel { padding: 1.2rem; }
+    .controls { flex-direction: column; align-items: stretch; }
+    .voice-selector { width: 100%; }
+    .speak-btn, .clear-btn { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="app-container">
+  <div class="glass-panel">
+    <div class="header">
+      <h1>🔊 Text to Speech Converter</h1>
+      <p>Type or paste any text – and let your device speak it aloud</p>
+    </div>
+
+    <textarea id="textInput" placeholder="Write something here... e.g., 'Hello, welcome to the text to speech converter.'"></textarea>
+
+    <div class="controls">
+      <select id="voiceSelect" class="voice-selector">
+        <option value="">Default voice</option>
+      </select>
+      <button id="speakBtn" class="speak-btn">🔊 Speak</button>
+      <button id="clearBtn" class="clear-btn">🗑️ Clear</button>
+    </div>
+
+    <div class="info-note">
+      <span>⚡</span> Works offline · Choose a voice (if available) · Adjust system volume
+    </div>
+  </div>
+</div>
+
+<script>
+  const textarea = document.getElementById('textInput');
+  const speakBtn = document.getElementById('speakBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const voiceSelect = document.getElementById('voiceSelect');
+
+  let currentUtterance = null;
+  let availableVoices = [];
+
+  // Load available voices
+  function loadVoices() {
+    availableVoices = window.speechSynthesis.getVoices();
+    if (!availableVoices.length) {
+      // Voices may load asynchronously
+      window.speechSynthesis.onvoiceschanged = () => {
+        availableVoices = window.speechSynthesis.getVoices();
+        populateVoiceList();
+      };
+    } else {
+      populateVoiceList();
+    }
+  }
+
+  function populateVoiceList() {
+    voiceSelect.innerHTML = '<option value="">Default voice</option>';
+    availableVoices.forEach(voice => {
+      const option = document.createElement('option');
+      option.value = voice.name;
+      option.textContent = `${voice.name} (${voice.lang})`;
+      voiceSelect.appendChild(option);
+    });
+  }
+
+  // Speak the current text
+  function speakText() {
+    const text = textarea.value.trim();
+    if (!text) {
+      alert('Nothing to speak. Please enter some text.');
+      return;
+    }
+    if (window.speechSynthesis) {
+      // Cancel any ongoing speech
+      if (currentUtterance) {
+        window.speechSynthesis.cancel();
+      }
+      currentUtterance = new SpeechSynthesisUtterance(text);
+      // Set selected voice if any
+      const selectedVoiceName = voiceSelect.value;
+      if (selectedVoiceName) {
+        const selectedVoice = availableVoices.find(v => v.name === selectedVoiceName);
+        if (selectedVoice) currentUtterance.voice = selectedVoice;
+      }
+      currentUtterance.rate = 1;
+      currentUtterance.pitch = 1;
+      window.speechSynthesis.speak(currentUtterance);
+    } else {
+      alert('Sorry, your browser does not support speech synthesis.');
+    }
+  }
+
+  // Clear textarea and stop any ongoing speech
+  function clearText() {
+    textarea.value = '';
+    if (window.speechSynthesis && currentUtterance) {
+      window.speechSynthesis.cancel();
+      currentUtterance = null;
+    }
+  }
+
+  // Initial load of voices
+  if (window.speechSynthesis) {
+    loadVoices();
+  } else {
+    voiceSelect.disabled = true;
+    speakBtn.disabled = true;
+    alert('Your browser does not support the Web Speech API.');
+  }
+
+  speakBtn.addEventListener('click', speakText);
+  clearBtn.addEventListener('click', clearText);
+</script>
+</body>
+</html>
